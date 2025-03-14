@@ -471,7 +471,7 @@ body {
         <div class="change-percent positive-change" id="change-percent">٠.٠٠٪ ↑</div>
       </div>
       <div class="price-title">قیمت بیت‌کوین</div>
-      <div class="price-equivalent" id="price-equivalent">در حال بارگذاری...</div>
+      <div class="price-equivalent hidden" id="price-equivalent"></div>
       <div id="price-websocket-status" class="hidden">آخرین بروزرسانی: <span id="last-updated">-</span></div>
     </div>
     
@@ -501,9 +501,6 @@ let allPriceData = {
 let currentPrice = 0;
 let lastUpdateTime = null;
 
-// Exchange rate for IRR (Toman = IRR/10) - will be set by fetchTomanRate()
-let tomanRate = 89500; // Default fallback rate in case API call fails
-
 // Function to format numbers in Persian with commas
 function formatNumber(num) {
   return new Intl.NumberFormat('fa-IR').format(Math.round(num));
@@ -531,11 +528,10 @@ function formatDate(timestamp, timeframe) {
 
 // Function to update UI with price
 function updatePriceDisplay(usdPrice) {
-  const tomanPrice = usdPrice * tomanRate;
   const priceElement = document.getElementById('current-price');
   
-  priceElement.textContent = `${formatNumber(tomanPrice)} تومان`;
-  document.getElementById('price-equivalent').textContent = `معادل ${formatNumber(usdPrice)} تتر (دلار)`;
+  priceElement.textContent = `${formatNumber(usdPrice)} تتر (دلار)`;
+  document.getElementById('price-equivalent').textContent = ``;
   
   // Update last updated time
   lastUpdateTime = new Date();
@@ -627,7 +623,6 @@ function initChart() {
             label: function(context) {
               const price = context.raw;
               const usdPrice = `${formatNumber(price)} تتر (دلار)`;
-              const tomanPrice = `${formatNumber(price * tomanRate)} تومان`;
               
               // Get the date for additional context in tooltips
               let dateInfo = '';
@@ -643,7 +638,7 @@ function initChart() {
                 }
               }
               
-              const tooltipLines = [`قیمت: ${usdPrice}`, `معادل: ${tomanPrice}`];
+              const tooltipLines = [`قیمت: ${usdPrice}`];
               if (dateInfo) {
                 tooltipLines.push(`تاریخ: ${dateInfo}`);
               }
