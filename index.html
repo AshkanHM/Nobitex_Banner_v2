@@ -687,48 +687,44 @@ async function fetchAllHistoricalData() {
   document.getElementById('loading').style.display = 'flex';
   
   try {
-    // Get current price from CoinGecko
-    const currentResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    
-    // Check if the response is ok (specifically handling 429 Too Many Requests error)
+    // Get current price from CoinCap
+    const currentResponse = await fetch('https://api.coincap.io/v2/assets/bitcoin');
+
+    // Check if the response is ok
     if (!currentResponse.ok) {
       console.error(`Failed to fetch current price: ${currentResponse.status} ${currentResponse.statusText}`);
       throw new Error(`Failed to fetch current Bitcoin price: ${currentResponse.status}`);
     }
-    
+
     const currentData = await currentResponse.json();
-    
+
     // Verify we got valid data
-    if (!currentData.bitcoin || typeof currentData.bitcoin.usd !== 'number') {
+    if (!currentData.data || typeof currentData.data.priceUsd === 'undefined') {
       console.error('Incomplete or invalid price data received');
       throw new Error('Invalid Bitcoin price data');
     }
 
-    const currentBTCPrice = parseFloat(currentData.bitcoin.usd);
-    
-    // Get historical data
-    // Last 24 hours - hourly interval
-    const dayResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=hourly');
+    const currentBTCPrice = parseFloat(currentData.data.priceUsd);
 
-    // Last month - daily interval
-    const monthResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily');
+    // Build time ranges for historical data (in milliseconds)
+    const now = Date.now();
+    const dayStart = now - 24 * 60 * 60 * 1000;      // 24 hours ago
+    const monthStart = now - 30 * 24 * 60 * 60 * 1000; // 30 days ago
+    const yearStart = now - 365 * 24 * 60 * 60 * 1000; // 365 days ago
 
-    // Last year - daily interval
-    const yearResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily');
-    
+    // Fetch historical data
+    const dayResponse = await fetch(`https://api.coincap.io/v2/assets/bitcoin/history?interval=h1&start=${dayStart}&end=${now}`);
+    const monthResponse = await fetch(`https://api.coincap.io/v2/assets/bitcoin/history?interval=d1&start=${monthStart}&end=${now}`);
+    const yearResponse = await fetch(`https://api.coincap.io/v2/assets/bitcoin/history?interval=d1&start=${yearStart}&end=${now}`);
+
     // Check if all responses are ok
     if (!dayResponse.ok || !monthResponse.ok || !yearResponse.ok) {
       throw new Error('Failed to fetch historical data');
     }
-    
-    const dayJson = await dayResponse.json();
-    const monthJson = await monthResponse.json();
-    const yearJson = await yearResponse.json();
 
-    // Transform CoinGecko market_chart data to a structure similar to CoinCap's for reuse
-    const dayData = { data: dayJson.prices.map(([time, price]) => ({ time, priceUsd: price.toString() })) };
-    const monthData = { data: monthJson.prices.map(([time, price]) => ({ time, priceUsd: price.toString() })) };
-    const yearData = { data: yearJson.prices.map(([time, price]) => ({ time, priceUsd: price.toString() })) };
+    const dayData = await dayResponse.json();
+    const monthData = await monthResponse.json();
+    const yearData = await yearResponse.json();
 
     // Validate the data structure for each response
     if (!dayData.data || !Array.isArray(dayData.data) || dayData.data.length === 0 ||
